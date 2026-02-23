@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "TempJobFinder",
+    "slug": "tempjobfinder",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#007AFF"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app needs your location to find nearby temporary jobs."
+      }
+    },
+    "android": {
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    }
+  }
+}
