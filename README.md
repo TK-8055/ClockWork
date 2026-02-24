@@ -96,13 +96,18 @@ export const API_URL = 'http://YOUR_IP:3000/api';
 <table>
   <tr>
     <td align="center">
-      <a href="https://github.com/YOUR_USERNAME">
-        <img src="https://github.com/YOUR_USERNAME.png" width="100px;" alt=""/>
+      <a href="https://github.com/Tk-8055">
+        <img src="https://github.com/Tk-8055.png" width="100px;" style="border-radius:50%;" alt=""/>
         <br />
-        <sub><b>Your Name</b></sub>
+        <sub><b>Tk-8055</b></sub>
       </a>
-      <br />
-      <sub>Full Stack Developer</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/amanps1">
+        <img src="https://github.com/amanps1.png" width="100px;" style="border-radius:50%;" alt=""/>
+        <br />
+        <sub><b>amanps1</b></sub>
+      </a>
     </td>
   </tr>
 </table>
