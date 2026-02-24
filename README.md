@@ -93,7 +93,7 @@ export const API_URL = 'http://YOUR_IP:3000/api';
 
 ## 💗 Contributors
 
-[![Contributors](https://contrib.rocks/image?repo=TK-8055/ClockWork)](https://github.com/TK-8055/ClockWork/graphs/contributors)
+[![Contributors](https://contrib.rocks/image?repo=Amanps1/ClockWork)](https://github.com/Amanps1/ClockWork/graphs/contributors)
 
 ## 📝 License
 
