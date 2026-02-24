@@ -1,62 +1,33 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, StatusBar, ActivityIndicator } from 'react-native';
+import { authService } from '../services/auth';
 
 const SplashScreen = ({ navigation }) => {
   useEffect(() => {
-    const timer = setTimeout(() => {
-      navigation.replace('Home');
-    }, 2000);
+    checkAuth();
+  }, []);
 
-    return () => clearTimeout(timer);
-  }, [navigation]);
+  const checkAuth = async () => {
+    setTimeout(() => {
+      navigation.replace('Main');
+    }, 1500);
+  };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.icon}>💼</Text>
-      <Text style={styles.title}>TempJobFinder</Text>
-      <Text style={styles.subtitle}>Find Work Instantly</Text>
-      <View style={styles.tagline}>
-        <Text style={styles.taglineText}>Your Gateway to Temporary Work</Text>
-      </View>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <Text style={styles.logo}>Quick Worker</Text>
+      <Text style={styles.tagline}>Find local work. Get it done.</Text>
+      <ActivityIndicator size="large" color="#10B981" style={styles.loader} />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#6C63FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  icon: {
-    fontSize: 80,
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 38,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 10,
-    letterSpacing: 1,
-  },
-  subtitle: {
-    fontSize: 18,
-    color: '#fff',
-    opacity: 0.95,
-    marginBottom: 30,
-  },
-  tagline: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  taglineText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
-  },
+  container: { flex: 1, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' },
+  logo: { fontSize: 36, fontWeight: '600', color: '#1A1A1A', marginBottom: 12, letterSpacing: -0.8 },
+  tagline: { fontSize: 16, color: '#6B7280', fontWeight: '500', marginBottom: 40 },
+  loader: { marginTop: 20 },
 });
 
 export default SplashScreen;

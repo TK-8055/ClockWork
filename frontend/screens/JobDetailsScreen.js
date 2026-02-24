@@ -1,410 +1,100 @@
-import React, { useContext } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
-} from "react-native";
-import { JobContext } from "../context/JobContext";
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
 
-const JobDetailsScreen = ({ route, navigation }) => {
-  const { job } = route.params;
-  const { acceptJob } = useContext(JobContext);
-
-  const handleAcceptJob = () => {
-    Alert.alert(
-      "Confirm & Accept Job",
-      "Are you sure you want to accept this job? You can start earning immediately.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Accept Job",
-          onPress: () => {
-            acceptJob(job.id);
-            Alert.alert(
-              "🎉 Success!",
-              "Job accepted! Check your dashboard to view activity.",
-              [
-                {
-                  text: "View Status",
-                  onPress: () => navigation.navigate("JobStatus"),
-                },
-              ],
-            );
-          },
-          style: "default",
-        },
-      ],
-    );
-  };
+const JobDetailsScreen = ({ navigation }) => {
+  const jobLocation = { latitude: 12.9352, longitude: 77.6245 };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Floating Header */}
-      <View style={styles.floatingHeader}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
-          <Text style={styles.backIcon}>←</Text>
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.backBtn}>← Back</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Job Details</Text>
-        <View style={styles.placeholder} />
+        <View style={{ width: 50 }} />
       </View>
 
-      {/* Main Job Card */}
-      <View style={styles.jobCard}>
-        <View style={styles.jobIconContainer}>
-          <Text style={styles.jobIcon}>💼</Text>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.payCard}>
+          <Text style={styles.payLabel}>💰 Payment</Text>
+          <Text style={styles.payAmount}>₹450</Text>
         </View>
-        <Text style={styles.jobTitle}>{job.title}</Text>
-        <Text style={styles.jobDescription}>{job.description}</Text>
-      </View>
 
-      {/* Key Stats Grid */}
-      <View style={styles.statsGrid}>
-        <View style={styles.statBox}>
-          <Text style={styles.statBoxIcon}>💰</Text>
-          <Text style={styles.statBoxLabel}>Earning</Text>
-          <Text style={styles.statBoxValue}>₹{job.wage}</Text>
-        </View>
-        <View style={styles.statBox}>
-          <Text style={styles.statBoxIcon}>⏱️</Text>
-          <Text style={styles.statBoxLabel}>Duration</Text>
-          <Text style={styles.statBoxValue}>{job.duration}</Text>
-        </View>
-        <View style={styles.statBox}>
-          <Text style={styles.statBoxIcon}>📍</Text>
-          <Text style={styles.statBoxLabel}>Distance</Text>
-          <Text style={styles.statBoxValue}>{job.distance}km</Text>
-        </View>
-      </View>
+        <Text style={styles.title}>House Cleaning</Text>
+        <Text style={styles.category}>🏷️ Cleaning</Text>
 
-      {/* Details Section */}
-      <View style={styles.detailsSection}>
-        <Text style={styles.sectionTitle}>📋 About This Job</Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>📝 Description</Text>
+          <Text style={styles.description}>Need thorough cleaning of 2BHK apartment. Kitchen, bathrooms, and all rooms. Should take 3-4 hours.</Text>
+        </View>
 
-        <View style={styles.detailItem}>
-          <Text style={styles.detailIcon}>💵</Text>
-          <View style={styles.detailContent}>
-            <Text style={styles.detailLabel}>Total Payment</Text>
-            <Text style={styles.detailValue}>₹{job.wage}</Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>📍 Location</Text>
+          <View style={styles.locationCard}>
+            <Text style={styles.locationText}>Koramangala, Bangalore</Text>
+            <Text style={styles.distance}>2.5 km away</Text>
+          </View>
+          <View style={styles.mapContainer}>
+            <MapView
+              style={styles.map}
+              region={{ latitude: jobLocation.latitude, longitude: jobLocation.longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 }}
+              scrollEnabled={true}
+              zoomEnabled={true}
+            >
+              <Marker coordinate={jobLocation} />
+            </MapView>
           </View>
         </View>
 
-        <View style={styles.detailItem}>
-          <Text style={styles.detailIcon}>🕒</Text>
-          <View style={styles.detailContent}>
-            <Text style={styles.detailLabel}>Expected Duration</Text>
-            <Text style={styles.detailValue}>{job.duration}</Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>👤 Posted By</Text>
+          <View style={styles.userCard}>
+            <View style={styles.userAvatar}>
+              <Text style={styles.userAvatarText}>SK</Text>
+            </View>
+            <View>
+              <Text style={styles.userName}>Suresh Kumar</Text>
+              <Text style={styles.userPhone}>📞 +91 98765 43210</Text>
+            </View>
           </View>
         </View>
 
-        <View style={styles.detailItem}>
-          <Text style={styles.detailIcon}>📍</Text>
-          <View style={styles.detailContent}>
-            <Text style={styles.detailLabel}>Location</Text>
-            <Text style={styles.detailValue}>{job.distance} km away</Text>
-          </View>
-        </View>
-
-        <View style={styles.detailItem}>
-          <Text style={styles.detailIcon}>✅</Text>
-          <View style={styles.detailContent}>
-            <Text style={styles.detailLabel}>Status</Text>
-            <Text style={styles.detailValueGreen}>Available</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Features */}
-      <View style={styles.featuresSection}>
-        <Text style={styles.sectionTitle}>✨ Why Take This Job</Text>
-
-        <View style={styles.featureRow}>
-          <Text style={styles.featureDot}>✓</Text>
-          <Text style={styles.featureText}>
-            Instant payment after completion
-          </Text>
-        </View>
-        <View style={styles.featureRow}>
-          <Text style={styles.featureDot}>✓</Text>
-          <Text style={styles.featureText}>
-            Flexible timing - start whenever you're ready
-          </Text>
-        </View>
-        <View style={styles.featureRow}>
-          <Text style={styles.featureDot}>✓</Text>
-          <Text style={styles.featureText}>
-            Verified employer - safe & secure
-          </Text>
-        </View>
-      </View>
-
-      {/* Action Button */}
-      <TouchableOpacity
-        style={styles.acceptButton}
-        onPress={handleAcceptJob}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.acceptButtonText}>🎯 Accept This Job</Text>
-      </TouchableOpacity>
-
-      {/* Info Box */}
-      <View style={styles.infoBox}>
-        <Text style={styles.infoIcon}>💡</Text>
-        <Text style={styles.infoText}>
-          Once accepted, you'll see it in your dashboard and can start
-          immediately.
-        </Text>
-      </View>
-    </ScrollView>
+        <TouchableOpacity style={styles.applyBtn}>
+          <Text style={styles.applyText}>✓ Apply for This Job</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F9FAFB",
-  },
-  floatingHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#F7FAFC",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  backIcon: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#667EEA",
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#1A202C",
-  },
-  placeholder: {
-    width: 40,
-  },
-
-  /* Job Card */
-  jobCard: {
-    backgroundColor: "#667EEA",
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 24,
-    padding: 24,
-    alignItems: "center",
-    shadowColor: "#667EEA",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 5,
-  },
-  jobIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  jobIcon: {
-    fontSize: 40,
-  },
-  jobTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#FFFFFF",
-    marginBottom: 10,
-    textAlign: "center",
-  },
-  jobDescription: {
-    fontSize: 14,
-    color: "rgba(255, 255, 255, 0.8)",
-    textAlign: "center",
-    lineHeight: 20,
-  },
-
-  /* Stats Grid */
-  statsGrid: {
-    flexDirection: "row",
-    marginHorizontal: 16,
-    marginTop: 20,
-    gap: 12,
-  },
-  statBox: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  statBoxIcon: {
-    fontSize: 28,
-    marginBottom: 8,
-  },
-  statBoxLabel: {
-    fontSize: 11,
-    color: "#A0AEC0",
-    fontWeight: "600",
-    marginBottom: 6,
-    textTransform: "uppercase",
-    letterSpacing: 0.3,
-  },
-  statBoxValue: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#667EEA",
-    textAlign: "center",
-  },
-
-  /* Details Section */
-  detailsSection: {
-    marginHorizontal: 16,
-    marginTop: 24,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1A202C",
-    marginBottom: 16,
-    letterSpacing: 0.3,
-  },
-  detailItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F7FAFC",
-  },
-  detailIcon: {
-    fontSize: 24,
-    marginRight: 12,
-    width: 36,
-  },
-  detailContent: {
-    flex: 1,
-  },
-  detailLabel: {
-    fontSize: 12,
-    color: "#A0AEC0",
-    fontWeight: "600",
-    marginBottom: 4,
-    textTransform: "uppercase",
-    letterSpacing: 0.3,
-  },
-  detailValue: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#2D3748",
-  },
-  detailValueGreen: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#48BB78",
-  },
-
-  /* Features */
-  featuresSection: {
-    marginHorizontal: 16,
-    marginTop: 20,
-    backgroundColor: "#F7FAFC",
-    borderRadius: 20,
-    padding: 20,
-  },
-  featureRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  featureDot: {
-    fontSize: 18,
-    color: "#48BB78",
-    marginRight: 12,
-    fontWeight: "700",
-  },
-  featureText: {
-    flex: 1,
-    fontSize: 14,
-    color: "#4A5568",
-    fontWeight: "500",
-    lineHeight: 20,
-  },
-
-  /* Accept Button */
-  acceptButton: {
-    backgroundColor: "#48BB78",
-    marginHorizontal: 16,
-    marginTop: 24,
-    marginBottom: 16,
-    paddingVertical: 18,
-    borderRadius: 16,
-    alignItems: "center",
-    shadowColor: "#48BB78",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  acceptButtonText: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "800",
-    letterSpacing: 0.3,
-  },
-
-  /* Info Box */
-  infoBox: {
-    marginHorizontal: 16,
-    marginBottom: 24,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    backgroundColor: "#FEF3C7",
-    borderRadius: 12,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  infoIcon: {
-    fontSize: 20,
-    marginRight: 12,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 13,
-    color: "#92400E",
-    fontWeight: "500",
-    lineHeight: 18,
-  },
+  container: { flex: 1, backgroundColor: '#F8F9FA' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 60, paddingBottom: 20, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
+  backBtn: { fontSize: 16, fontWeight: '600', color: '#10B981' },
+  headerTitle: { fontSize: 18, fontWeight: '600', color: '#1A1A1A' },
+  content: { flex: 1, paddingHorizontal: 20, paddingTop: 20 },
+  payCard: { backgroundColor: '#10B981', borderRadius: 12, padding: 20, marginBottom: 20, alignItems: 'center' },
+  payLabel: { fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.9)', marginBottom: 4 },
+  payAmount: { fontSize: 36, fontWeight: '700', color: '#FFFFFF' },
+  title: { fontSize: 24, fontWeight: '700', color: '#1A1A1A', marginBottom: 8 },
+  category: { fontSize: 14, fontWeight: '500', color: '#6B7280', marginBottom: 24 },
+  section: { marginBottom: 24 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#1A1A1A', marginBottom: 12 },
+  description: { fontSize: 15, color: '#374151', lineHeight: 22 },
+  locationCard: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, padding: 16, marginBottom: 12 },
+  locationText: { fontSize: 15, fontWeight: '600', color: '#1A1A1A', marginBottom: 4 },
+  distance: { fontSize: 13, color: '#6B7280' },
+  mapContainer: { height: 200, borderRadius: 12, overflow: 'hidden' },
+  map: { flex: 1 },
+  userCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, padding: 16 },
+  userAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#10B981', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  userAvatarText: { fontSize: 18, fontWeight: '600', color: '#FFFFFF' },
+  userName: { fontSize: 16, fontWeight: '600', color: '#1A1A1A', marginBottom: 2 },
+  userPhone: { fontSize: 13, color: '#6B7280' },
+  applyBtn: { backgroundColor: '#10B981', borderRadius: 10, paddingVertical: 16, alignItems: 'center', marginTop: 8, marginBottom: 32 },
+  applyText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
 });
 
 export default JobDetailsScreen;
