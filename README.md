@@ -91,26 +91,9 @@ export const API_URL = 'http://YOUR_IP:3000/api';
 - **Location**: Kuniyamuthur, Coimbatore, Tamil Nadu
 - **Target Audience**: Blue-collar workers and local customers
 
-## 🤝 Contributors
+## 💗 Contributors
 
-<table>
-  <tr>
-    <td align="center">
-      <a href="https://github.com/Tk-8055">
-        <img src="https://github.com/Tk-8055.png" width="100px;" style="border-radius:50%;" alt=""/>
-        <br />
-        <sub><b>Tk-8055</b></sub>
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://github.com/amanps1">
-        <img src="https://github.com/amanps1.png" width="100px;" style="border-radius:50%;" alt=""/>
-        <br />
-        <sub><b>amanps1</b></sub>
-      </a>
-    </td>
-  </tr>
-</table>
+[![Contributors](https://contrib.rocks/image?repo=TK-8055/ClockWork)](https://github.com/TK-8055/ClockWork/graphs/contributors)
 
 ## 📝 License
 
