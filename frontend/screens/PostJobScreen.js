@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,89 +9,155 @@ import {
   Alert,
 } from "react-native";
 import * as Location from "expo-location";
-import { JobContext } from "../context/JobContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { API_URL } from '../config';
 
 const PostJobScreen = ({ navigation }) => {
-  const { addJob } = useContext(JobContext);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [wage, setWage] = useState("");
   const [duration, setDuration] = useState("");
+  const [category, setCategory] = useState("Cleaning");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const JOB_POSTING_REWARD = 10;
+  const PLATFORM_FEE_PERCENTAGE = 10;
+
+  const categories = [
+    "Cleaning",
+    "Plumbing",
+    "Electrical",
+    "Carpentry",
+    "Cooking",
+    "Painting",
+    "Mechanic",
+    "AC Repair",
+    "Delivery",
+    "Gardening",
+    "Other",
+  ];
+
+  const getLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "📍 Permission Required",
+          "We need location access to post your job."
+        );
+        return null;
+      }
+
+      const loc = await Location.getCurrentPositionAsync({});
+      const address = await Location.reverseGeocodeAsync({
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+      });
+
+      let addressStr = "Current Location";
+      if (address[0]) {
+        const a = address[0];
+        addressStr = `${a.street || ""}, ${a.subregion || a.district || ""}, ${a.city || ""}`.trim();
+      }
+
+      return {
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+        address: addressStr,
+      };
+    } catch (error) {
+      console.error("Location error:", error);
+      return {
+        latitude: 11.051,
+        longitude: 76.901,
+        address: "Coimbatore",
+      };
+    }
+  };
+
   const handleSubmit = async () => {
-    if (!title || !description || !wage || !duration) {
-      Alert.alert(
-        "❌ Incomplete Form",
-        "Please fill in all fields to post a job.",
-      );
+    if (!title || !description || !wage || !category) {
+      Alert.alert("❌ Incomplete Form", "Please fill in all required fields.");
       return;
     }
 
     if (parseInt(wage) < 100) {
-      Alert.alert(
-        "⚠️ Low Wage",
-        "Please consider offering at least ₹100 for fair compensation.",
-      );
+      Alert.alert("⚠️ Low Wage", "Please offer at least ₹100.");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-
-      if (status !== "granted") {
-        Alert.alert(
-          "📍 Permission Required",
-          "We need location access to post your job. Please enable location permissions in settings.",
-        );
+      const currentLocation = await getLocation();
+      if (!currentLocation) {
         setIsSubmitting(false);
         return;
       }
 
-      const location = await Location.getCurrentPositionAsync({});
+      const wageAmount = parseInt(wage);
+      const platformFee = Math.round(wageAmount * (PLATFORM_FEE_PERCENTAGE / 100));
+      const workerGets = wageAmount - platformFee;
 
-      const newJob = {
+      const jobData = {
         title,
         description,
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        wage: parseInt(wage),
-        duration,
+        category,
+        paymentAmount: wageAmount,
+        location: currentLocation,
       };
 
-      addJob(newJob);
+      const token = await AsyncStorage.getItem("auth_token");
+
+      const response = await fetch(`${API_URL}/jobs`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(jobData),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || result.error) {
+        Alert.alert("❌ Error", result.error || "Failed to post job");
+        setIsSubmitting(false);
+        return;
+      }
 
       Alert.alert(
         "🎉 Job Posted Successfully!",
-        "Your job is now visible to workers in your area.",
+        `You earned ${JOB_POSTING_REWARD} credits!\nWorker gets: ₹${workerGets}`,
         [
           {
             text: "OK",
             onPress: () => {
-              navigation.navigate("Home");
               setTitle("");
               setDescription("");
               setWage("");
               setDuration("");
+              setCategory("Cleaning");
               setIsSubmitting(false);
+              navigation.navigate("Main", { screen: "Home" });
             },
           },
-        ],
+        ]
       );
     } catch (error) {
-      Alert.alert(
-        "❌ Error",
-        "Failed to post job. Please check your location settings and try again.",
-      );
+      console.error("Error posting job:", error);
+      Alert.alert("❌ Error", "Failed to post job. Check your network.");
       setIsSubmitting(false);
     }
   };
 
+  const calculateWorkerPay = () => {
+    if (!wage || parseInt(wage) < 100) return 0;
+    return parseInt(wage) - Math.round(parseInt(wage) * PLATFORM_FEE_PERCENTAGE / 100);
+  };
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header Section */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.backButton}>← Back</Text>
@@ -99,416 +165,157 @@ const PostJobScreen = ({ navigation }) => {
         <View style={styles.headerContent}>
           <Text style={styles.headerEmoji}>💼</Text>
           <Text style={styles.headerTitle}>Post a Job</Text>
-          <Text style={styles.headerSubtitle}>Find workers for your tasks</Text>
         </View>
       </View>
 
-      {/* Main Form */}
       <View style={styles.formContainer}>
-        {/* Title Section */}
         <View style={styles.formSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionIcon}>📌</Text>
-            <Text style={styles.sectionTitle}>Job Basics</Text>
+          <Text style={styles.sectionTitle}>Job Details</Text>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Job Title *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g., House Cleaning"
+              placeholderTextColor="#A0AEC0"
+              value={title}
+              onChangeText={setTitle}
+              editable={!isSubmitting}
+            />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Job Title</Text>
-            <View style={styles.inputIconBox}>
-              <Text style={styles.inputIcon}>💼</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g., Warehouse Helper"
-                placeholderTextColor="#A0AEC0"
-                value={title}
-                onChangeText={setTitle}
-                editable={!isSubmitting}
-              />
+            <Text style={styles.label}>Category *</Text>
+            <View style={styles.categoryContainer}>
+              {categories.map((cat) => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[
+                    styles.categoryBtn,
+                    category === cat && styles.categoryBtnActive,
+                  ]}
+                  onPress={() => setCategory(cat)}
+                  disabled={isSubmitting}
+                >
+                  <Text
+                    style={[
+                      styles.categoryBtnText,
+                      category === cat && styles.categoryBtnTextActive,
+                    ]}
+                  >
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
-            <Text style={styles.helperText}>
-              Be specific about the role (max 40 chars)
-            </Text>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Job Description</Text>
-            <View style={[styles.inputIconBox, styles.textAreaBox]}>
-              <Text style={[styles.inputIcon, styles.descriptionIcon]}>📝</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Describe the job requirements, responsibilities, and any skills needed..."
-                placeholderTextColor="#A0AEC0"
-                value={description}
-                onChangeText={setDescription}
-                multiline
-                numberOfLines={4}
-                editable={!isSubmitting}
-              />
-            </View>
-            <Text style={styles.helperText}>
-              Provide clear details to attract qualified workers
-            </Text>
+            <Text style={styles.label}>Description *</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Describe the job..."
+              placeholderTextColor="#A0AEC0"
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              numberOfLines={4}
+              editable={!isSubmitting}
+            />
           </View>
         </View>
 
-        {/* Compensation Section */}
         <View style={styles.formSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionIcon}>💰</Text>
-            <Text style={styles.sectionTitle}>Compensation</Text>
-          </View>
+          <Text style={styles.sectionTitle}>Compensation</Text>
 
           <View style={styles.row}>
             <View style={[styles.inputGroup, styles.halfWidth]}>
-              <Text style={styles.label}>Wage (₹)</Text>
-              <View style={styles.inputIconBox}>
-                <Text style={styles.inputIcon}>💵</Text>
-                <TextInput
-                  style={[styles.input, styles.flexInput]}
-                  placeholder="500"
-                  placeholderTextColor="#A0AEC0"
-                  value={wage}
-                  onChangeText={setWage}
-                  keyboardType="numeric"
-                  editable={!isSubmitting}
-                />
-              </View>
+              <Text style={styles.label}>Wage (₹) *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="500"
+                placeholderTextColor="#A0AEC0"
+                value={wage}
+                onChangeText={setWage}
+                keyboardType="numeric"
+                editable={!isSubmitting}
+              />
             </View>
 
             <View style={[styles.inputGroup, styles.halfWidth]}>
               <Text style={styles.label}>Duration</Text>
-              <View style={styles.inputIconBox}>
-                <Text style={styles.inputIcon}>⏱️</Text>
-                <TextInput
-                  style={[styles.input, styles.flexInput]}
-                  placeholder="e.g., 4 hours"
-                  placeholderTextColor="#A0AEC0"
-                  value={duration}
-                  onChangeText={setDuration}
-                  editable={!isSubmitting}
-                />
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* Info Cards */}
-        <View style={styles.infoCardsContainer}>
-          <View style={styles.infoCard}>
-            <View style={styles.infoCardIcon}>
-              <Text style={styles.infoCardIconText}>📍</Text>
-            </View>
-            <View style={styles.infoCardContent}>
-              <Text style={styles.infoCardTitle}>Location</Text>
-              <Text style={styles.infoCardText}>
-                Your current location will be used to post this job
-              </Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g., 4 hours"
+                placeholderTextColor="#A0AEC0"
+                value={duration}
+                onChangeText={setDuration}
+                editable={!isSubmitting}
+              />
             </View>
           </View>
 
-          <View style={styles.infoCard}>
-            <View style={styles.infoCardIcon}>
-              <Text style={styles.infoCardIconText}>👥</Text>
-            </View>
-            <View style={styles.infoCardContent}>
-              <Text style={styles.infoCardTitle}>Visibility</Text>
-              <Text style={styles.infoCardText}>
-                Workers within a 10km radius will see your posting
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.infoCard}>
-            <View style={styles.infoCardIcon}>
-              <Text style={styles.infoCardIconText}>⏰</Text>
-            </View>
-            <View style={styles.infoCardContent}>
-              <Text style={styles.infoCardTitle}>Timeline</Text>
-              <Text style={styles.infoCardText}>
-                Jobs are visible until completed or manually removed
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Tips Section */}
-        <View style={styles.tipsSection}>
-          <Text style={styles.tipsTitle}>💡 Tips for Better Hiring</Text>
-
-          <View style={styles.tipItem}>
-            <Text style={styles.tipBullet}>✓</Text>
-            <Text style={styles.tipText}>
-              Be clear and detailed about job requirements
-            </Text>
-          </View>
-
-          <View style={styles.tipItem}>
-            <Text style={styles.tipBullet}>✓</Text>
-            <Text style={styles.tipText}>
-              Offer competitive wages for quality workers
-            </Text>
-          </View>
-
-          <View style={styles.tipItem}>
-            <Text style={styles.tipBullet}>✓</Text>
-            <Text style={styles.tipText}>
-              Respond quickly to worker inquiries
-            </Text>
-          </View>
-
-          <View style={styles.tipItem}>
-            <Text style={styles.tipBullet}>✓</Text>
-            <Text style={styles.tipText}>
-              Provide positive feedback to build reputation
+          <View style={styles.feeInfo}>
+            <Text style={styles.feeInfoText}>
+              Platform Fee: {PLATFORM_FEE_PERCENTAGE}% → Worker gets: ₹{calculateWorkerPay()}
             </Text>
           </View>
         </View>
 
-        {/* Submit Button */}
+        <View style={styles.infoCard}>
+          <Text style={styles.infoCardTitle}>📍 Location</Text>
+          <Text style={styles.infoCardText}>Your GPS location will be used automatically</Text>
+        </View>
+
+        <View style={[styles.infoCard, styles.rewardCard]}>
+          <Text style={styles.infoCardTitle}>🎁 Earn Credits!</Text>
+          <Text style={styles.infoCardText}>Post a job and earn {JOB_POSTING_REWARD} credits</Text>
+        </View>
+
         <TouchableOpacity
-          style={[
-            styles.submitButton,
-            isSubmitting && styles.submitButtonDisabled,
-          ]}
+          style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
           onPress={handleSubmit}
           disabled={isSubmitting}
         >
-          <Text style={styles.submitButtonIcon}>📤</Text>
           <Text style={styles.submitButtonText}>
-            {isSubmitting ? "Posting..." : "Post Job"}
+            {isSubmitting ? "Posting..." : "📤 Post Job"}
           </Text>
         </TouchableOpacity>
-
-        <View style={styles.formFooter} />
       </View>
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F8F9FD",
-  },
-  header: {
-    backgroundColor: "#fff",
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
-  },
-  backButton: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#667EEA",
-    marginBottom: 12,
-  },
-  headerContent: {
-    alignItems: "center",
-  },
-  headerEmoji: {
-    fontSize: 48,
-    marginBottom: 12,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#2D3748",
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: "#718096",
-  },
-  formContainer: {
-    padding: 16,
-  },
-  formSection: {
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-    gap: 8,
-  },
-  sectionIcon: {
-    fontSize: 20,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#2D3748",
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#2D3748",
-    marginBottom: 10,
-  },
-  inputIconBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    paddingLeft: 12,
-    borderWidth: 2,
-    borderColor: "#E2E8F0",
-    gap: 8,
-  },
-  inputIcon: {
-    fontSize: 20,
-  },
-  input: {
-    flex: 1,
-    padding: 14,
-    fontSize: 15,
-    color: "#2D3748",
-  },
-  flexInput: {
-    paddingRight: 14,
-  },
-  textAreaBox: {
-    alignItems: "flex-start",
-    paddingTop: 12,
-    paddingBottom: 0,
-  },
-  descriptionIcon: {
-    marginTop: 2,
-  },
-  textArea: {
-    flex: 1,
-    height: 100,
-    textAlignVertical: "top",
-    paddingRight: 12,
-    paddingBottom: 12,
-  },
-  helperText: {
-    fontSize: 12,
-    color: "#A0AEC0",
-    marginTop: 6,
-  },
-  row: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  halfWidth: {
-    flex: 1,
-  },
-  infoCardsContainer: {
-    marginBottom: 24,
-  },
-  infoCard: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 12,
-    alignItems: "flex-start",
-    gap: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: "#667EEA",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  infoCardIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: "#F0E7FF",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  infoCardIconText: {
-    fontSize: 18,
-  },
-  infoCardContent: {
-    flex: 1,
-  },
-  infoCardTitle: {
-    fontSize: 13,
-    fontWeight: "bold",
-    color: "#2D3748",
-    marginBottom: 2,
-  },
-  infoCardText: {
-    fontSize: 12,
-    color: "#718096",
-    lineHeight: 16,
-  },
-  tipsSection: {
-    backgroundColor: "#fff",
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 24,
-    borderLeftWidth: 4,
-    borderLeftColor: "#F59E0B",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  tipsTitle: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#2D3748",
-    marginBottom: 12,
-  },
-  tipItem: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    marginBottom: 8,
-  },
-  tipBullet: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#48BB78",
-    width: 20,
-  },
-  tipText: {
-    fontSize: 12,
-    color: "#4A5568",
-    flex: 1,
-    lineHeight: 16,
-  },
-  submitButton: {
-    backgroundColor: "#48BB78",
-    paddingVertical: 18,
-    borderRadius: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    shadowColor: "#48BB78",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-    marginBottom: 12,
-  },
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
-  submitButtonIcon: {
-    fontSize: 18,
-  },
-  submitButtonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  formFooter: {
-    height: 20,
-  },
+  container: { flex: 1, backgroundColor: "#F8F9FD" },
+  header: { backgroundColor: "#fff", paddingHorizontal: 16, paddingTop: 12, paddingBottom: 20, borderBottomWidth: 1, borderBottomColor: "#E2E8F0" },
+  backButton: { fontSize: 16, fontWeight: "600", color: "#667EEA", marginBottom: 12 },
+  headerContent: { alignItems: "center" },
+  headerEmoji: { fontSize: 48, marginBottom: 8 },
+  headerTitle: { fontSize: 24, fontWeight: "bold", color: "#2D3748" },
+  formContainer: { padding: 16 },
+  formSection: { marginBottom: 24 },
+  sectionTitle: { fontSize: 16, fontWeight: "bold", color: "#2D3748", marginBottom: 16 },
+  inputGroup: { marginBottom: 16 },
+  label: { fontSize: 14, fontWeight: "600", color: "#2D3748", marginBottom: 8 },
+  input: { backgroundColor: "#fff", borderRadius: 12, padding: 14, fontSize: 15, color: "#2D3748", borderWidth: 2, borderColor: "#E2E8F0" },
+  textArea: { height: 100, textAlignVertical: "top" },
+  row: { flexDirection: "row", gap: 12 },
+  halfWidth: { flex: 1 },
+  categoryContainer: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  categoryBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: "#fff", borderWidth: 2, borderColor: "#E2E8F0" },
+  categoryBtnActive: { backgroundColor: "#10B981", borderColor: "#10B981" },
+  categoryBtnText: { fontSize: 13, color: "#6B7280", fontWeight: "600" },
+  categoryBtnTextActive: { color: "#fff" },
+  feeInfo: { backgroundColor: "#FEF3C7", padding: 12, borderRadius: 8 },
+  feeInfoText: { fontSize: 13, color: "#92400E", textAlign: "center" },
+  infoCard: { backgroundColor: "#fff", padding: 16, borderRadius: 12, marginBottom: 12, borderLeftWidth: 4, borderLeftColor: "#667EEA" },
+  rewardCard: { borderLeftColor: "#10B981" },
+  infoCardTitle: { fontSize: 14, fontWeight: "bold", color: "#2D3748", marginBottom: 4 },
+  infoCardText: { fontSize: 12, color: "#718096" },
+  submitButton: { backgroundColor: "#48BB78", paddingVertical: 18, borderRadius: 16, alignItems: "center", marginBottom: 12 },
+  submitButtonDisabled: { opacity: 0.6 },
+  submitButtonText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
 });
 
 export default PostJobScreen;

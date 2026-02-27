@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, StatusBar, ActivityIndicator } from 'react-native';
-import { authService } from '../services/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SplashScreen = ({ navigation }) => {
   useEffect(() => {
@@ -8,15 +8,28 @@ const SplashScreen = ({ navigation }) => {
   }, []);
 
   const checkAuth = async () => {
-    setTimeout(() => {
-      navigation.replace('Main');
-    }, 1500);
+    try {
+      const token = await AsyncStorage.getItem('auth_token');
+      const userData = await AsyncStorage.getItem('user_data');
+      
+      setTimeout(() => {
+        if (token && userData) {
+          navigation.replace('Main');
+        } else {
+          navigation.replace('Login');
+        }
+      }, 1500);
+    } catch (error) {
+      setTimeout(() => {
+        navigation.replace('Login');
+      }, 1500);
+    }
   };
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <Text style={styles.logo}>Quick Worker</Text>
+      <Text style={styles.logo}>ClockWork</Text>
       <Text style={styles.tagline}>Find local work. Get it done.</Text>
       <ActivityIndicator size="large" color="#10B981" style={styles.loader} />
     </View>

@@ -1,6 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const API_URL = 'http://192.168.1.100:3000/api';
+import { API_URL } from '../config';
 
 export const authService = {
   sendOTP: async (phone) => {
