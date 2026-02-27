@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator } from 'react-native';
-import { getJobs } from '../services/api';
+import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_URL } from '../config';
 
 const SearchScreen = ({ navigation }) => {
   const [search, setSearch] = useState('');
@@ -9,9 +11,11 @@ const SearchScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('All');
 
-  useEffect(() => {
-    loadJobs();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadJobs();
+    }, [])
+  );
 
   useEffect(() => {
     filterJobs();
@@ -19,10 +23,22 @@ const SearchScreen = ({ navigation }) => {
 
   const loadJobs = async () => {
     try {
-      const data = await getJobs();
-      setJobs(data);
+      const token = await AsyncStorage.getItem('auth_token');
+      const response = await fetch(`${API_URL}/jobs`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const existingJobs = await AsyncStorage.getItem('local_jobs');
+        const localJobs = existingJobs ? JSON.parse(existingJobs) : [];
+        const mergedJobs = [...localJobs, ...(data || [])];
+        setJobs(mergedJobs);
+      } else {
+        setJobs([]);
+      }
     } catch (error) {
-      console.error('Error loading jobs:', error);
+      setJobs([]);
     } finally {
       setLoading(false);
     }
@@ -33,14 +49,14 @@ const SearchScreen = ({ navigation }) => {
 
     if (search) {
       filtered = filtered.filter(job => 
-        job.title.toLowerCase().includes(search.toLowerCase()) ||
-        job.category.toLowerCase().includes(search.toLowerCase()) ||
+        job.title?.toLowerCase().includes(search.toLowerCase()) ||
+        job.category?.toLowerCase().includes(search.toLowerCase()) ||
         job.location?.address?.toLowerCase().includes(search.toLowerCase())
       );
     }
 
     if (filter === 'High Pay') {
-      filtered = filtered.sort((a, b) => b.paymentAmount - a.paymentAmount);
+      filtered = [...filtered].sort((a, b) => (b.paymentAmount || 0) - (a.paymentAmount || 0));
     }
 
     setFilteredJobs(filtered);
@@ -81,7 +97,10 @@ const SearchScreen = ({ navigation }) => {
         {loading ? (
           <ActivityIndicator size="large" color="#10B981" style={{ marginTop: 40 }} />
         ) : filteredJobs.length === 0 ? (
-          <Text style={styles.emptyText}>No jobs found</Text>
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>📭 No jobs found</Text>
+            <Text style={styles.emptySubtext}>Try a different search term</Text>
+          </View>
         ) : (
           filteredJobs.map(job => (
             <TouchableOpacity 
@@ -121,7 +140,9 @@ const styles = StyleSheet.create({
   jobCategory: { fontSize: 13, color: '#10B981', marginBottom: 2 },
   jobLocation: { fontSize: 13, color: '#6B7280' },
   jobPay: { fontSize: 16, fontWeight: '600', color: '#10B981' },
-  emptyText: { fontSize: 15, color: '#6B7280', textAlign: 'center', marginTop: 40 },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
+  emptyText: { fontSize: 18, fontWeight: '600', color: '#6B7280', marginBottom: 8 },
+  emptySubtext: { fontSize: 14, color: '#9CA3AF' },
 });
 
 export default SearchScreen;

@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar, Alert, ActivityIndicator } from 'react-native';
-import { authService } from '../services/auth';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar, ScrollView, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_URL } from '../config';
 
 const LoginScreen = ({ navigation }) => {
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
-  const [step, setStep] = useState('phone');
+  const [role, setRole] = useState('');
   const [loading, setLoading] = useState(false);
-  const [resendTimer, setResendTimer] = useState(0);
+  const [otpSent, setOtpSent] = useState(false);
 
   const isValidPhone = phone.length === 10 && /^\d+$/.test(phone);
-  const isValidOTP = otp.length === 6 && /^\d+$/.test(otp);
 
   const handleSendOTP = async () => {
     if (!isValidPhone) {
@@ -20,65 +20,67 @@ const LoginScreen = ({ navigation }) => {
 
     setLoading(true);
     try {
-      const result = await authService.sendOTP(`+91${phone}`);
-      if (result.success) {
-        setStep('otp');
-        setResendTimer(60);
-        const interval = setInterval(() => {
-          setResendTimer(prev => {
-            if (prev <= 1) {
-              clearInterval(interval);
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
+      const response = await fetch(`${API_URL}/auth/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: `+91${phone}` })
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        setOtpSent(true);
+        Alert.alert('OTP Sent', 'Check your phone for the OTP code');
       } else {
-        Alert.alert('Error', result.message || 'Could not send OTP');
+        Alert.alert('Error', data.message || 'Failed to send OTP');
       }
     } catch (error) {
-      Alert.alert('Error', 'Network error. Please try again');
+      Alert.alert('Error', 'Network error. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleVerifyOTP = async () => {
-    if (!isValidOTP) {
-      Alert.alert('Invalid OTP', 'Please enter a valid 6-digit OTP');
+    if (!role) {
+      Alert.alert('Select Role', 'Please select User or Worker');
       return;
     }
 
     setLoading(true);
     try {
-      const result = await authService.verifyOTP(`+91${phone}`, otp);
-      if (result.success) {
-        if (!result.user.role) {
-          setStep('role');
-        } else {
-          navigation.replace('Permission');
+      const response = await fetch(`${API_URL}/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: `+91${phone}`, otp: otp || '000000' })
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        await AsyncStorage.setItem('auth_token', data.token);
+        await AsyncStorage.setItem('user_data', JSON.stringify(data.user));
+        
+        // Set role if needed
+        if (data.user.role !== role.toUpperCase()) {
+          const roleResponse = await fetch(`${API_URL}/user/set-role`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${data.token}`
+            },
+            body: JSON.stringify({ role: role.toUpperCase() })
+          });
+          const roleData = await roleResponse.json();
+          if (roleData?.user) {
+            await AsyncStorage.setItem('user_data', JSON.stringify(roleData.user));
+          }
         }
-      } else {
-        Alert.alert('Error', result.message || 'Invalid OTP');
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Network error. Please try again');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRoleSelect = async (selectedRole) => {
-    setLoading(true);
-    try {
-      const result = await authService.setRole(selectedRole);
-      if (result.success) {
+        
         navigation.replace('Permission');
       } else {
-        Alert.alert('Error', 'Could not set role');
+        Alert.alert('Invalid OTP', data.message || 'Please check your OTP');
       }
     } catch (error) {
-      Alert.alert('Error', 'Network error. Please try again');
+      Alert.alert('Error', 'Network error. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -87,127 +89,118 @@ const LoginScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      
-      {step === 'phone' && (
-        <View style={styles.content}>
-          <Text style={styles.title}>Sign In</Text>
-          <Text style={styles.subtitle}>Enter your mobile number</Text>
-          
-          <View style={styles.phoneInput}>
-            <Text style={styles.prefix}>+91</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Mobile Number"
-              placeholderTextColor="#9CA3AF"
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-              maxLength={10}
-              editable={!loading}
-            />
-          </View>
-          
-          <TouchableOpacity 
-            style={[styles.btn, (!isValidPhone || loading) && styles.btnDisabled]} 
-            onPress={handleSendOTP}
-            disabled={!isValidPhone || loading}
-          >
-            {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.btnText}>Send OTP</Text>}
-          </TouchableOpacity>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.header}>
+          <Text style={styles.logo}>ClockWork</Text>
+          <Text style={styles.tagline}>Find local work. Get it done.</Text>
         </View>
-      )}
 
-      {step === 'otp' && (
-        <View style={styles.content}>
-          <Text style={styles.title}>Verify OTP</Text>
-          <Text style={styles.subtitle}>Enter 6-digit code sent to +91 {phone}</Text>
+        <View style={styles.form}>
+          <Text style={styles.title}>Welcome!</Text>
+          <Text style={styles.subtitle}>{otpSent ? 'Enter OTP to verify' : 'Enter your phone number'}</Text>
           
-          <TextInput
-            style={styles.inputFull}
-            placeholder="Enter OTP"
-            placeholderTextColor="#9CA3AF"
-            value={otp}
-            onChangeText={setOtp}
-            keyboardType="number-pad"
-            maxLength={6}
-            editable={!loading}
-          />
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Phone Number</Text>
+            <View style={styles.phoneInput}>
+              <Text style={styles.prefix}>+91</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="10-digit mobile number"
+                placeholderTextColor="#9CA3AF"
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+                maxLength={10}
+                editable={!otpSent}
+              />
+            </View>
+          </View>
+
+          {otpSent && (
+            <>
+              <Text style={styles.label}>I am a...</Text>
+              <View style={styles.roleContainer}>
+                <TouchableOpacity 
+                  style={[styles.roleCard, role === 'user' && styles.roleCardSelected]} 
+                  onPress={() => setRole('user')}
+                >
+                  <Text style={styles.roleIcon}>👤</Text>
+                  <Text style={[styles.roleTitle, role === 'user' && styles.roleTitleSelected]}>User</Text>
+                  <Text style={styles.roleDesc}>Post jobs & hire workers</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[styles.roleCard, role === 'worker' && styles.roleCardSelected]} 
+                  onPress={() => setRole('worker')}
+                >
+                  <Text style={styles.roleIcon}>🔧</Text>
+                  <Text style={[styles.roleTitle, role === 'worker' && styles.roleTitleSelected]}>Worker</Text>
+                  <Text style={styles.roleDesc}>Find jobs & earn money</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
           
-          <TouchableOpacity 
-            style={[styles.btn, (!isValidOTP || loading) && styles.btnDisabled]} 
-            onPress={handleVerifyOTP}
-            disabled={!isValidOTP || loading}
-          >
-            {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.btnText}>Verify</Text>}
-          </TouchableOpacity>
-          
-          <View style={styles.resendRow}>
-            <TouchableOpacity onPress={() => setStep('phone')} disabled={loading}>
-              <Text style={styles.link}>Change Number</Text>
+          {!otpSent ? (
+            <TouchableOpacity 
+              style={[styles.btn, (!isValidPhone || loading) && styles.btnDisabled]} 
+              onPress={handleSendOTP}
+              disabled={!isValidPhone || loading}
+            >
+              <Text style={styles.btnText}>
+                {loading ? 'Sending...' : 'Send OTP'}
+              </Text>
             </TouchableOpacity>
-            {resendTimer > 0 ? (
-              <Text style={styles.timer}>Resend in {resendTimer}s</Text>
-            ) : (
-              <TouchableOpacity onPress={handleSendOTP} disabled={loading}>
-                <Text style={styles.link}>Resend OTP</Text>
+          ) : (
+            <>
+              <TouchableOpacity 
+                style={[styles.btn, (!role || loading) && styles.btnDisabled]} 
+                onPress={handleVerifyOTP}
+                disabled={!role || loading}
+              >
+                <Text style={styles.btnText}>
+                  {loading ? 'Logging in...' : 'Continue'}
+                </Text>
               </TouchableOpacity>
-            )}
-          </View>
+            </>
+          )}
         </View>
-      )}
 
-      {step === 'role' && (
-        <View style={styles.content}>
-          <Text style={styles.title}>Select Role</Text>
-          <Text style={styles.subtitle}>How will you use Quick Worker?</Text>
-          
-          <TouchableOpacity 
-            style={styles.roleCard} 
-            onPress={() => handleRoleSelect('user')}
-            disabled={loading}
-          >
-            <Text style={styles.roleIcon}>👤</Text>
-            <Text style={styles.roleTitle}>User</Text>
-            <Text style={styles.roleDesc}>Post work and hire workers</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.roleCard} 
-            onPress={() => handleRoleSelect('worker')}
-            disabled={loading}
-          >
-            <Text style={styles.roleIcon}>🔧</Text>
-            <Text style={styles.roleTitle}>Worker</Text>
-            <Text style={styles.roleDesc}>Find work and earn money</Text>
-          </TouchableOpacity>
-
-          {loading && <ActivityIndicator size="large" color="#10B981" style={styles.loader} />}
-        </View>
-      )}
+        <Text style={styles.footer}>
+          By continuing, you agree to our Terms of Service
+        </Text>
+      </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
-  content: { flex: 1, paddingHorizontal: 24, paddingTop: 80 },
-  title: { fontSize: 32, fontWeight: '600', color: '#1A1A1A', marginBottom: 8, letterSpacing: -0.5 },
-  subtitle: { fontSize: 16, color: '#6B7280', marginBottom: 40 },
-  phoneInput: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, marginBottom: 24 },
+  scrollContent: { flexGrow: 1, paddingHorizontal: 24 },
+  header: { alignItems: 'center', paddingTop: 60, paddingBottom: 32 },
+  logo: { fontSize: 36, fontWeight: '700', color: '#10B981', marginBottom: 8 },
+  tagline: { fontSize: 16, color: '#6B7280' },
+  form: { flex: 1 },
+  title: { fontSize: 28, fontWeight: '600', color: '#1A1A1A', marginBottom: 8 },
+  subtitle: { fontSize: 16, color: '#6B7280', marginBottom: 32 },
+  inputGroup: { marginBottom: 20 },
+  label: { fontSize: 14, fontWeight: '600', color: '#1A1A1A', marginBottom: 8 },
+  input: { backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, color: '#1A1A1A' },
+  phoneInput: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8 },
   prefix: { fontSize: 16, fontWeight: '600', color: '#1A1A1A', paddingLeft: 16 },
-  input: { flex: 1, paddingHorizontal: 12, paddingVertical: 16, fontSize: 16, color: '#1A1A1A' },
-  inputFull: { backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 16, fontSize: 16, color: '#1A1A1A', marginBottom: 24 },
+  roleContainer: { flexDirection: 'row', gap: 12, marginBottom: 32 },
+  roleCard: { flex: 1, backgroundColor: '#F9FAFB', borderWidth: 2, borderColor: '#E5E7EB', borderRadius: 12, padding: 20, alignItems: 'center' },
+  roleCardSelected: { borderColor: '#10B981', backgroundColor: '#ECFDF5' },
+  roleIcon: { fontSize: 40, marginBottom: 8 },
+  roleTitle: { fontSize: 16, fontWeight: '600', color: '#1A1A1A', marginBottom: 4 },
+  roleTitleSelected: { color: '#10B981' },
+  roleDesc: { fontSize: 12, color: '#6B7280', textAlign: 'center' },
   btn: { backgroundColor: '#10B981', borderRadius: 8, paddingVertical: 16, alignItems: 'center', marginBottom: 16 },
   btnDisabled: { backgroundColor: '#E5E7EB' },
   btnText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
-  resendRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  link: { fontSize: 14, color: '#10B981', fontWeight: '600' },
-  timer: { fontSize: 14, color: '#6B7280' },
-  roleCard: { backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12, padding: 24, marginBottom: 16, alignItems: 'center' },
-  roleIcon: { fontSize: 48, marginBottom: 12 },
-  roleTitle: { fontSize: 18, fontWeight: '600', color: '#1A1A1A', marginBottom: 4 },
-  roleDesc: { fontSize: 14, color: '#6B7280', textAlign: 'center' },
-  loader: { marginTop: 20 },
+  linkBtn: { alignItems: 'center', paddingVertical: 8 },
+  linkText: { fontSize: 14, color: '#10B981', fontWeight: '600' },
+  footer: { fontSize: 12, color: '#9CA3AF', textAlign: 'center', paddingBottom: 32 },
 });
 
 export default LoginScreen;

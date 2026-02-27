@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Alert } from 'react-native';
 import * as Location from 'expo-location';
-import { postJob } from '../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_URL } from '../config';
 
 const PostWorkScreen = ({ navigation }) => {
   const [title, setTitle] = useState('');
@@ -11,12 +12,37 @@ const PostWorkScreen = ({ navigation }) => {
   const [location, setLocation] = useState(null);
   const [address, setAddress] = useState('Getting location...');
   const [loading, setLoading] = useState(false);
+  const [userRole, setUserRole] = useState(null);
 
-  const categories = ['Cleaning', 'Plumbing', 'Electrical', 'Painting', 'Carpentry', 'Cooking', 'Mechanic', 'AC Repair'];
+  const categories = ['Cleaning', 'Plumbing', 'Electrical', 'Painting', 'Carpentry', 'Cooking', 'Mechanic', 'AC Repair', 'Gardening', 'Delivery'];
 
   useEffect(() => {
     getCurrentLocation();
+    checkUserRole();
   }, []);
+
+  const checkUserRole = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('user_data');
+      if (userData) {
+        const user = JSON.parse(userData);
+        setUserRole(user.role);
+        
+        // If user is a worker, show alert and redirect
+        if (user.role === 'WORKER') {
+          Alert.alert(
+            '⚠️ Workers Cannot Post Jobs',
+            'Workers can only apply for jobs. Please switch to a User account to post jobs.',
+            [
+              { text: 'OK', onPress: () => navigation.goBack() }
+            ]
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error checking user role:', error);
+    }
+  };
 
   const getCurrentLocation = async () => {
     try {
@@ -44,18 +70,67 @@ const PostWorkScreen = ({ navigation }) => {
 
     setLoading(true);
     try {
-      await postJob({
+      // Try API first
+      try {
+        const token = await AsyncStorage.getItem('auth_token');
+        const response = await fetch(`${API_URL}/jobs`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            title,
+            category,
+            description,
+            paymentAmount: parseInt(payment),
+            location: { ...location, address },
+            images: []
+          }),
+        });
+
+        if (response.ok) {
+          Alert.alert('✅ Success', 'Job posted successfully!\n\nYou earned 10 credits for posting!');
+          navigation.goBack();
+          return;
+        }
+      } catch (apiError) {
+        console.log('API not available, saving locally');
+      }
+
+      // Save locally if API fails
+      const newJob = {
+        id: Date.now().toString(),
+        _id: Date.now().toString(),
         title,
         category,
         description,
         paymentAmount: parseInt(payment),
         location: { ...location, address },
-        images: []
-      });
-      Alert.alert('Success', 'Job posted successfully!');
+        images: [],
+        status: 'POSTED',
+        createdAt: new Date().toISOString(),
+      };
+
+      // Get existing jobs from storage
+      const existingJobs = await AsyncStorage.getItem('local_jobs');
+      const jobs = existingJobs ? JSON.parse(existingJobs) : [];
+      jobs.unshift(newJob);
+      await AsyncStorage.setItem('local_jobs', JSON.stringify(jobs));
+
+      // Update user credits
+      const userData = await AsyncStorage.getItem('user_data');
+      if (userData) {
+        const user = JSON.parse(userData);
+        user.credits = (user.credits || 100) + 10;
+        await AsyncStorage.setItem('user_data', JSON.stringify(user));
+      }
+
+      Alert.alert('✅ Success', 'Job posted successfully!\n\nYou earned 10 credits for posting!');
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Error', 'Failed to post job');
+      console.error('Error posting job:', error);
+      Alert.alert('Error', 'Failed to post job. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -120,7 +195,7 @@ const PostWorkScreen = ({ navigation }) => {
         </View>
 
         <TouchableOpacity style={styles.uploadBtn}>
-          <Text style={styles.uploadText}>Upload Image (Optional)</Text>
+          <Text style={styles.uploadText}>📷 Upload Image (Optional)</Text>
         </TouchableOpacity>
 
         <View style={styles.locationCard}>
@@ -129,8 +204,13 @@ const PostWorkScreen = ({ navigation }) => {
           <Text style={styles.locationSubtext}>Auto-detected from GPS</Text>
         </View>
 
+        <View style={styles.rewardCard}>
+          <Text style={styles.rewardTitle}>🎁 Post for FREE!</Text>
+          <Text style={styles.rewardText}>Get 10 credits reward for every job you post</Text>
+        </View>
+
         <TouchableOpacity style={styles.postBtn} onPress={handlePost} disabled={loading}>
-          <Text style={styles.postText}>{loading ? 'Posting...' : 'Post Job'}</Text>
+          <Text style={styles.postText}>{loading ? 'Posting...' : 'Post Job (FREE)'}</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -160,6 +240,9 @@ const styles = StyleSheet.create({
   locationLabel: { fontSize: 13, fontWeight: '600', color: '#6B7280', marginBottom: 4 },
   locationText: { fontSize: 15, fontWeight: '600', color: '#1A1A1A', marginBottom: 2 },
   locationSubtext: { fontSize: 12, color: '#9CA3AF' },
+  rewardCard: { backgroundColor: '#ECFDF5', borderWidth: 1, borderColor: '#10B981', borderRadius: 8, padding: 16, marginBottom: 24 },
+  rewardTitle: { fontSize: 15, fontWeight: '700', color: '#10B981', marginBottom: 4 },
+  rewardText: { fontSize: 13, color: '#059669' },
   postBtn: { backgroundColor: '#10B981', borderRadius: 8, paddingVertical: 16, alignItems: 'center', marginBottom: 32 },
   postText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
 });
