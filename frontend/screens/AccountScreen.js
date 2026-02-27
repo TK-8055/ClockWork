@@ -128,7 +128,22 @@ const AccountScreen = ({ navigation }) => {
         const updatedUser = { ...user, ...data.user };
         setUser(updatedUser);
         await AsyncStorage.setItem('user_data', JSON.stringify(updatedUser));
-        Alert.alert('Role Updated', `You are now a ${newRole === 'WORKER' ? 'Worker' : 'User'}`);
+        Alert.alert(
+          'Role Updated', 
+          `You are now a ${newRole === 'WORKER' ? 'Worker' : 'User'}`,
+          [
+            { 
+              text: 'OK', 
+              onPress: () => {
+                // Reset navigation to reload TabNavigator with new role
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Main' }],
+                });
+              }
+            }
+          ]
+        );
       } catch (error) {
         Alert.alert('Error', 'Failed to update role');
       }
@@ -263,7 +278,7 @@ const AccountScreen = ({ navigation }) => {
                 <Text style={styles.statLabel}>Jobs Completed</Text>
               </View>
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>₹{user?.totalEarnings || 0}</Text>
+                <Text style={styles.statValue}>{user?.totalEarnings || 0} Credits</Text>
                 <Text style={styles.statLabel}>Total Earned</Text>
               </View>
               <View style={styles.statItem}>

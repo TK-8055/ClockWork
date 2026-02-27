@@ -64,8 +64,11 @@ const PostWorkScreen = ({ navigation }) => {
   const handlePost = async () => {
     if (!title.trim()) return Alert.alert('Error', 'Please enter job title');
     if (!category) return Alert.alert('Error', 'Please select a category');
-    if (!description.trim()) return Alert.alert('Error', 'Please enter description');
+    if (!description || !description.trim()) return Alert.alert('Error', 'Please enter description');
+    if (description.trim().length < 20) return Alert.alert('Error', 'Description must be at least 20 characters');
     if (!payment) return Alert.alert('Error', 'Please enter payment amount');
+    const paymentAmount = parseInt(payment);
+    if (isNaN(paymentAmount) || paymentAmount < 50) return Alert.alert('Error', 'Minimum payment amount is 50 Credits');
     if (!location) return Alert.alert('Error', 'Location not available');
 
     setLoading(true);
@@ -98,6 +101,18 @@ const PostWorkScreen = ({ navigation }) => {
         console.log('API not available, saving locally');
       }
 
+      // Get user data for postedBy field
+      let postedByInfo = { name: 'Unknown', phoneNumber: 'Not provided' };
+      let userCreds = await AsyncStorage.getItem('user_data');
+      if (userCreds) {
+        const user = JSON.parse(userCreds);
+        postedByInfo = {
+          _id: user._id,
+          name: user.name || 'Unknown',
+          phoneNumber: user.phoneNumber || 'Not provided'
+        };
+      }
+
       // Save locally if API fails
       const newJob = {
         id: Date.now().toString(),
@@ -106,10 +121,13 @@ const PostWorkScreen = ({ navigation }) => {
         category,
         description,
         paymentAmount: parseInt(payment),
+        platformFee: Math.round(parseInt(payment) * 0.1),
+        workerPayment: parseInt(payment) - Math.round(parseInt(payment) * 0.1),
         location: { ...location, address },
         images: [],
         status: 'POSTED',
         createdAt: new Date().toISOString(),
+        postedBy: postedByInfo,
       };
 
       // Get existing jobs from storage
@@ -119,9 +137,8 @@ const PostWorkScreen = ({ navigation }) => {
       await AsyncStorage.setItem('local_jobs', JSON.stringify(jobs));
 
       // Update user credits
-      const userData = await AsyncStorage.getItem('user_data');
-      if (userData) {
-        const user = JSON.parse(userData);
+      if (userCreds) {
+        const user = JSON.parse(userCreds);
         user.credits = (user.credits || 100) + 10;
         await AsyncStorage.setItem('user_data', JSON.stringify(user));
       }
@@ -181,12 +198,12 @@ const PostWorkScreen = ({ navigation }) => {
           numberOfLines={4}
         />
 
-        <Text style={styles.label}>Payment Amount</Text>
+        <Text style={styles.label}>Payment Amount (Credits)</Text>
         <View style={styles.paymentInput}>
-          <Text style={styles.currency}>₹</Text>
+          <Text style={styles.currency}>💳</Text>
           <TextInput
             style={styles.input}
-            placeholder="Enter amount"
+            placeholder="Enter amount (min 50)"
             placeholderTextColor="#9CA3AF"
             value={payment}
             onChangeText={setPayment}

@@ -15,6 +15,7 @@ const Tab = createBottomTabNavigator();
 const TabNavigator = () => {
   const [userRole, setUserRole] = useState(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     loadUserRole();
@@ -30,6 +31,10 @@ const TabNavigator = () => {
     const userData = await AsyncStorage.getItem('user_data');
     if (userData) {
       const user = JSON.parse(userData);
+      // Force re-render when role changes to update tabs
+      if (userRole !== user.role) {
+        setRefreshKey(prev => prev + 1);
+      }
       setUserRole(user.role);
       setIsLoaded(true);
       return;
@@ -50,6 +55,7 @@ const TabNavigator = () => {
 
   return (
     <Tab.Navigator
+      key={refreshKey}
       screenOptions={{
         headerShown: false,
         tabBarStyle: {

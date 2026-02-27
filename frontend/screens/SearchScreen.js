@@ -32,7 +32,11 @@ const SearchScreen = ({ navigation }) => {
         const data = await response.json();
         const existingJobs = await AsyncStorage.getItem('local_jobs');
         const localJobs = existingJobs ? JSON.parse(existingJobs) : [];
-        const mergedJobs = [...localJobs, ...(data || [])];
+        // Filter out completed jobs - they should only appear in History
+        const activeJobs = (data || []).filter(job => 
+          !['COMPLETED', 'CANCELLED', 'DISPUTED'].includes(job.status)
+        );
+        const mergedJobs = [...localJobs, ...activeJobs];
         setJobs(mergedJobs);
       } else {
         setJobs([]);
