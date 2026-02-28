@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator } from 'react-native';
+ import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { API_URL } from '../config';
@@ -52,6 +52,7 @@ const WorkHistoryScreen = ({ navigation }) => {
       }
     } catch (error) {
       console.error('Error loading data:', error);
+      Alert.alert('Connection Error', 'Unable to load data. Please check your internet connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -90,7 +91,7 @@ const WorkHistoryScreen = ({ navigation }) => {
               <Text style={styles.statLabel}>Completed</Text>
             </View>
             <View style={styles.statBox}>
-              <Text style={styles.statValue}>₹{totalEarnings}</Text>
+              <Text style={styles.statValue}>{totalEarnings} Credits</Text>
               <Text style={styles.statLabel}>Total Earned</Text>
             </View>
           </View>
@@ -129,8 +130,8 @@ const WorkHistoryScreen = ({ navigation }) => {
                   </Text>
                 </View>
                 <View style={styles.historyRight}>
-                  <Text style={styles.historyPay}>₹{app.jobId?.paymentAmount || 0}</Text>
-                  <Text style={styles.historyEarn}>You get: ₹{app.jobId?.workerPayment || 0}</Text>
+                  <Text style={styles.historyPay}>{app.jobId?.paymentAmount || 0} Credits</Text>
+                  <Text style={styles.historyEarn}>You get: {app.jobId?.workerPayment || 0} Credits</Text>
                 </View>
               </TouchableOpacity>
             ))
@@ -209,7 +210,7 @@ const WorkHistoryScreen = ({ navigation }) => {
                   </Text>
                 </View>
               </View>
-              <Text style={styles.historyPay}>₹{job.paymentAmount}</Text>
+              <Text style={styles.historyPay}>{job.paymentAmount} Credits</Text>
             </TouchableOpacity>
           ))
         )}

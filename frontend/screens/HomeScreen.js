@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, Modal, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, Modal, ActivityIndicator, Alert } from "react-native";
 import { useFocusEffect } from '@react-navigation/native';
 import MapView, { Marker, Circle } from 'react-native-maps';
 import * as Location from 'expo-location';
@@ -70,7 +70,11 @@ const HomeScreen = ({ navigation }) => {
         const data = await response.json();
         const existingJobs = await AsyncStorage.getItem('local_jobs');
         const localJobs = existingJobs ? JSON.parse(existingJobs) : [];
-        const mergedJobs = [...localJobs, ...(data || [])];
+        // Filter out completed jobs - they should only appear in History
+        const activeJobs = (data || []).filter(job => 
+          !['COMPLETED', 'CANCELLED', 'DISPUTED'].includes(job.status)
+        );
+        const mergedJobs = [...localJobs, ...activeJobs];
         setAllJobs(mergedJobs);
         setJobs(mergedJobs);
       } else {
@@ -141,7 +145,7 @@ const HomeScreen = ({ navigation }) => {
             onPress={() => navigation.navigate('Credit')}
           >
             <Text style={styles.creditsIcon}>💳</Text>
-            <Text style={styles.creditsText}>₹{credits}</Text>
+            <Text style={styles.creditsText}>{credits} Credits</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             style={styles.iconBtn} 
