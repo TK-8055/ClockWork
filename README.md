@@ -287,7 +287,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- 📧 Email: support@clockwork.app
 - 🐛 Issues: [GitHub Issues](https://github.com/Amanps1/ClockWork/issues)
 - 💬 Discussions: [GitHub Discussions](https://github.com/Amanps1/ClockWork/discussions)
 
