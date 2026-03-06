@@ -273,7 +273,9 @@ See [COMPLETE_LOGICAL_ISSUES.md](COMPLETE_LOGICAL_ISSUES.md) for detailed analys
 
 ## 🤝 Contributors
 
-[![Contributors](https://contrib.rocks/image?repo=Amanps1/ClockWork)](https://github.com/Amanps1/ClockWork/graphs/contributors)
+<a href="https://github.com/Amanps1/ClockWork/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=Amanps1/ClockWork" />
+</a>
 
 Made with ❤️ by the ClockWork team
 
